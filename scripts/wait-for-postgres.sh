@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ -f ".env" ]; then
+  set -a
+  source ".env"
+  set +a
+fi
+
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "DATABASE_URL is not set"
   exit 1

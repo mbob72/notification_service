@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS default_notification_preference_versions (
   version integer NOT NULL,
   valid_from timestamptz NOT NULL,
   valid_to timestamptz NULL,
+  CONSTRAINT chk_dnpv_valid_period CHECK (valid_to IS NULL OR valid_to > valid_from),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (region_id, version)
 );
@@ -155,13 +156,13 @@ COMMENT ON TABLE default_notification_preferences IS 'Regional default enable/di
 COMMENT ON COLUMN default_notification_preferences.category_id IS 'Category-wide default scope (mutually exclusive with notification_type_id).';
 COMMENT ON COLUMN default_notification_preferences.notification_type_id IS 'Notification-type scope (mutually exclusive with category_id).';
 
--- Supports resolving defaults by active version + channel + exact type match.
-CREATE INDEX IF NOT EXISTS idx_dnp_version_channel_type
+-- Enforces one type-level default preference per version+channel+notification_type.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_dnp_version_channel_type
   ON default_notification_preferences(version_id, channel_id, notification_type_id)
   WHERE notification_type_id IS NOT NULL;
 
--- Supports fallback resolving defaults by active version + channel + category.
-CREATE INDEX IF NOT EXISTS idx_dnp_version_channel_category
+-- Enforces one category-level default preference per version+channel+category.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_dnp_version_channel_category
   ON default_notification_preferences(version_id, channel_id, category_id)
   WHERE category_id IS NOT NULL;
 
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS default_quiet_hour_versions (
   version integer NOT NULL,
   valid_from timestamptz NOT NULL,
   valid_to timestamptz NULL,
+  CONSTRAINT chk_dqhv_valid_period CHECK (valid_to IS NULL OR valid_to > valid_from),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (region_id, version)
 );
@@ -275,6 +277,7 @@ CREATE TABLE IF NOT EXISTS global_policy_versions (
   version integer NOT NULL UNIQUE,
   valid_from timestamptz NOT NULL,
   valid_to timestamptz NULL,
+  CONSTRAINT chk_gpv_valid_period CHECK (valid_to IS NULL OR valid_to > valid_from),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

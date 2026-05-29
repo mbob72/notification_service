@@ -10,3 +10,16 @@ Resolve effective config in this order:
 6. global policy constraints (active `global_policy_versions` + `global_notification_policies`)
 
 Global policies are applied last and act as hard constraints.
+
+Policy specificity inside step 6 should be deterministic:
+
+1. broad global rule (`region_id`, `channel_id`, `category_id`, `notification_type_id` are all `NULL`)
+2. region-scoped rule
+3. channel-scoped rule
+4. category-scoped rule
+5. notification-type-scoped rule (most specific)
+
+Current schema note:
+
+- `user_quiet_hours` does not encode an explicit empty override (`[]`) separately from `inherit default` when no rows exist.
+- If product needs explicit disable semantics, add a scope table (for example `user_quiet_hour_settings` with mode `inherit|custom|disabled`) in a follow-up migration.

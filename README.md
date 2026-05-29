@@ -4,7 +4,10 @@
 
 - Docker and Docker Compose
 - Node.js + pnpm
-- PostgreSQL client tools (`psql`) available in `PATH`
+
+Optional:
+
+- PostgreSQL client tools (`psql`) in `PATH` (if missing, migration script falls back to `docker compose exec`)
 
 ## Setup
 
