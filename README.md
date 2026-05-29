@@ -32,6 +32,12 @@ This command will:
 3. Apply SQL migrations
 4. Start the app in development mode (`pnpm dev`)
 
+## Development commands
+
+- `pnpm dev`: runs `tsx watch src/server.ts`
+- `pnpm test`: runs unit tests via Vitest
+- `pnpm typecheck`: runs strict TypeScript checks (`tsc --noEmit`)
+
 ## Reset local database
 
 ```bash
@@ -51,4 +57,7 @@ pnpm db:down
 
 - Migrations are explicit commands and are not run automatically inside app runtime code.
 - The notification schema migration is idempotent, so re-running `pnpm db:migrate` is safe.
-- Update `package.json` script `dev` with the real app development command when app code is added.
+- The SQL migration is the source of truth for DDL.
+- Drizzle schema mirrors the existing database schema and is used as a typed query layer.
+- Current MVP resolves active regional default versions at read time.
+- In production, we could pin default version IDs on user creation if historical stability of defaults is required.

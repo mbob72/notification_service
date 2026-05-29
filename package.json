@@ -9,7 +9,27 @@
     "db:logs": "docker compose logs -f postgres",
     "db:wait": "bash scripts/wait-for-postgres.sh",
     "db:migrate": "bash scripts/db-migrate.sh",
-    "dev": "bash -lc 'echo \"No application dev command is configured yet.\"; echo \"Add your app dev command to package.json:scripts.dev\"; exit 1'",
+    "dev": "tsx watch src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "dev:local": "pnpm db:up && pnpm db:wait && pnpm db:migrate && pnpm dev"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "luxon": "^3.7.2",
+    "pg": "^8.21.0",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   }
 }
