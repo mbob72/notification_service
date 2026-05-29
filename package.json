@@ -1,0 +1,15 @@
+{
+  "name": "notification_service",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10",
+  "scripts": {
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:wait": "bash scripts/wait-for-postgres.sh",
+    "db:migrate": "bash scripts/db-migrate.sh",
+    "dev": "bash -lc 'echo \"No application dev command is configured yet.\"; echo \"Add your app dev command to package.json:scripts.dev\"; exit 1'",
+    "dev:local": "pnpm db:up && pnpm db:wait && pnpm db:migrate && pnpm dev"
+  }
+}

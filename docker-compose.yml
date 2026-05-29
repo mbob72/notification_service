@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: notification-config-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notification_config_dev
+      POSTGRES_USER: notification_config_user
+      POSTGRES_PASSWORD: notification_config_password
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_config_user -d notification_config_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
