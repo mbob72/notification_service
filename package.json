@@ -9,10 +9,11 @@
     "db:logs": "docker compose logs -f postgres",
     "db:wait": "bash scripts/wait-for-postgres.sh",
     "db:migrate": "bash scripts/db-migrate.sh",
+    "db:seed": "bash scripts/db-seed.sh",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "dev:local": "pnpm db:up && pnpm db:wait && pnpm db:migrate && pnpm dev"
+    "dev:local": "pnpm db:up && pnpm db:wait && pnpm db:migrate && pnpm db:seed && pnpm dev"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

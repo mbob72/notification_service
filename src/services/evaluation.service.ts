@@ -1,3 +1,4 @@
+import { ApiError } from '../api/errors';
 import { isMinuteInsideQuietHours, toLocalMinuteOfDay } from '../domain/quiet-hours';
 import type { Decision, EvaluationReason } from '../domain/types';
 import { GlobalPoliciesRepository } from '../repositories/global-policies.repository';
@@ -25,30 +26,29 @@ export class EvaluationService {
   }> {
     const user = await this.usersRepository.findById(input.userId);
     if (!user) {
-      throw new Error(`Unknown user: ${input.userId}`);
+      throw new ApiError(404, 'unknown_user', `Unknown user: ${input.userId}`);
+    }
+
+    if (input.regionCode && input.regionCode !== user.regionCode) {
+      throw new ApiError(
+        400,
+        'region_mismatch',
+        `Region mismatch: user region is ${user.regionCode}, request region is ${input.regionCode}`,
+      );
     }
 
     const channel = await this.metadataRepository.findChannelByCode(input.channelCode);
     if (!channel) {
-      throw new Error(`Unknown channel: ${input.channelCode}`);
+      throw new ApiError(404, 'unknown_channel', `Unknown channel: ${input.channelCode}`);
     }
 
     const notificationType = await this.metadataRepository.findNotificationTypeByCode(input.notificationTypeCode);
     if (!notificationType) {
-      throw new Error(`Unknown notification type: ${input.notificationTypeCode}`);
-    }
-
-    let regionId = user.regionId;
-    if (input.regionCode) {
-      const region = await this.usersRepository.findRegionByCode(input.regionCode);
-      if (!region) {
-        throw new Error(`Unknown region: ${input.regionCode}`);
-      }
-      regionId = region.id;
+      throw new ApiError(404, 'unknown_notification_type', `Unknown notification type: ${input.notificationTypeCode}`);
     }
 
     const policy = await this.globalPoliciesRepository.findMatchingActivePolicy({
-      regionId,
+      regionId: user.regionId,
       notificationTypeId: notificationType.id,
       categoryId: notificationType.categoryId,
       channelId: channel.id,
@@ -62,7 +62,6 @@ export class EvaluationService {
       userId: input.userId,
       notificationTypeCode: input.notificationTypeCode,
       channelCode: input.channelCode,
-      regionId,
     });
 
     if (!effective.enabled) {

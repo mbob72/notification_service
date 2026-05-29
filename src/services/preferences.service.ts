@@ -1,3 +1,4 @@
+import { ApiError } from '../api/errors';
 import type { ChannelCode, EffectivePreference } from '../domain/types';
 import { NotificationMetadataRepository } from '../repositories/notification-metadata.repository';
 import { PreferencesRepository } from '../repositories/preferences.repository';
@@ -16,21 +17,20 @@ export class PreferencesService {
     userId: string;
     notificationTypeCode: string;
     channelCode: string;
-    regionId?: string;
   }): Promise<EffectivePreference> {
     const user = await this.usersRepository.findById(input.userId);
     if (!user) {
-      throw new Error(`Unknown user: ${input.userId}`);
+      throw new ApiError(404, 'unknown_user', `Unknown user: ${input.userId}`);
     }
 
     const channel = await this.metadataRepository.findChannelByCode(input.channelCode);
     if (!channel) {
-      throw new Error(`Unknown channel: ${input.channelCode}`);
+      throw new ApiError(404, 'unknown_channel', `Unknown channel: ${input.channelCode}`);
     }
 
     const notificationType = await this.metadataRepository.findNotificationTypeByCode(input.notificationTypeCode);
     if (!notificationType) {
-      throw new Error(`Unknown notification type: ${input.notificationTypeCode}`);
+      throw new ApiError(404, 'unknown_notification_type', `Unknown notification type: ${input.notificationTypeCode}`);
     }
 
     const userPref = await this.preferencesRepository.findUserPreference({
@@ -42,14 +42,12 @@ export class PreferencesService {
     let enabled: boolean;
     let enabledSource: 'user' | 'default';
 
-    const resolvedRegionId = input.regionId ?? user.regionId;
-
     if (userPref) {
       enabled = userPref.enabled;
       enabledSource = 'user';
     } else {
       const defaultPref = await this.preferencesRepository.findActiveDefaultPreference({
-        regionId: resolvedRegionId,
+        regionId: user.regionId,
         notificationTypeId: notificationType.id,
         categoryId: notificationType.categoryId,
         channelId: channel.id,
@@ -70,7 +68,7 @@ export class PreferencesService {
 
     if (quietHours.length === 0) {
       quietHours = await this.quietHoursRepository.findActiveDefaultQuietHours({
-        regionId: resolvedRegionId,
+        regionId: user.regionId,
         notificationTypeId: notificationType.id,
         categoryId: notificationType.categoryId,
         channelId: channel.id,
@@ -94,5 +92,52 @@ export class PreferencesService {
         quietHours: quietHoursSource,
       },
     };
+  }
+
+  async updateUserPreference(input: {
+    userId: string;
+    notificationTypeCode: string;
+    channelCode: string;
+    enabled?: boolean;
+    quietHours?: Array<{ startMinute: number; endMinute: number }>;
+  }): Promise<EffectivePreference> {
+    const user = await this.usersRepository.findById(input.userId);
+    if (!user) {
+      throw new ApiError(404, 'unknown_user', `Unknown user: ${input.userId}`);
+    }
+
+    const channel = await this.metadataRepository.findChannelByCode(input.channelCode);
+    if (!channel) {
+      throw new ApiError(404, 'unknown_channel', `Unknown channel: ${input.channelCode}`);
+    }
+
+    const notificationType = await this.metadataRepository.findNotificationTypeByCode(input.notificationTypeCode);
+    if (!notificationType) {
+      throw new ApiError(404, 'unknown_notification_type', `Unknown notification type: ${input.notificationTypeCode}`);
+    }
+
+    if (input.enabled !== undefined) {
+      await this.preferencesRepository.upsertUserPreference({
+        userId: user.id,
+        notificationTypeId: notificationType.id,
+        channelId: channel.id,
+        enabled: input.enabled,
+      });
+    }
+
+    if (input.quietHours !== undefined) {
+      await this.quietHoursRepository.replaceUserQuietHours({
+        userId: user.id,
+        notificationTypeId: notificationType.id,
+        channelId: channel.id,
+        windows: input.quietHours,
+      });
+    }
+
+    return this.getEffectivePreference({
+      userId: user.id,
+      notificationTypeCode: notificationType.code,
+      channelCode: channel.code,
+    });
   }
 }
