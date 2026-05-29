@@ -16,6 +16,7 @@ export class PreferencesService {
     userId: string;
     notificationTypeCode: string;
     channelCode: string;
+    regionId?: string;
   }): Promise<EffectivePreference> {
     const user = await this.usersRepository.findById(input.userId);
     if (!user) {
@@ -41,12 +42,14 @@ export class PreferencesService {
     let enabled: boolean;
     let enabledSource: 'user' | 'default';
 
+    const resolvedRegionId = input.regionId ?? user.regionId;
+
     if (userPref) {
       enabled = userPref.enabled;
       enabledSource = 'user';
     } else {
       const defaultPref = await this.preferencesRepository.findActiveDefaultPreference({
-        regionId: user.regionId,
+        regionId: resolvedRegionId,
         notificationTypeId: notificationType.id,
         categoryId: notificationType.categoryId,
         channelId: channel.id,
@@ -67,7 +70,7 @@ export class PreferencesService {
 
     if (quietHours.length === 0) {
       quietHours = await this.quietHoursRepository.findActiveDefaultQuietHours({
-        regionId: user.regionId,
+        regionId: resolvedRegionId,
         notificationTypeId: notificationType.id,
         categoryId: notificationType.categoryId,
         channelId: channel.id,

@@ -17,6 +17,7 @@ export class EvaluationService {
     userId: string;
     notificationTypeCode: string;
     channelCode: string;
+    regionCode?: string;
     datetime: string;
   }): Promise<{
     decision: Decision;
@@ -37,8 +38,17 @@ export class EvaluationService {
       throw new Error(`Unknown notification type: ${input.notificationTypeCode}`);
     }
 
+    let regionId = user.regionId;
+    if (input.regionCode) {
+      const region = await this.usersRepository.findRegionByCode(input.regionCode);
+      if (!region) {
+        throw new Error(`Unknown region: ${input.regionCode}`);
+      }
+      regionId = region.id;
+    }
+
     const policy = await this.globalPoliciesRepository.findMatchingActivePolicy({
-      regionId: user.regionId,
+      regionId,
       notificationTypeId: notificationType.id,
       categoryId: notificationType.categoryId,
       channelId: channel.id,
@@ -52,6 +62,7 @@ export class EvaluationService {
       userId: input.userId,
       notificationTypeCode: input.notificationTypeCode,
       channelCode: input.channelCode,
+      regionId,
     });
 
     if (!effective.enabled) {
