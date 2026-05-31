@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -f ".env" ]; then
+if [ -z "${DATABASE_URL:-}" ] && [ -f ".env" ]; then
   set -a
   source ".env"
   set +a
@@ -11,6 +11,10 @@ if [ -z "${DATABASE_URL:-}" ]; then
   echo "DATABASE_URL is not set"
   exit 1
 fi
+
+DB_SERVICE="${DB_SERVICE:-postgres_dev}"
+DB_USER="${DB_USER:-notification_config_user}"
+DB_NAME="${DB_NAME:-notification_config_dev}"
 
 if [ ! -d "migrations" ]; then
   echo "Migrations directory not found: migrations"
@@ -32,9 +36,9 @@ run_migration() {
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration_file"
   else
     echo "Local psql is not available, using docker compose exec fallback"
-    docker compose exec -T postgres psql \
-      -U notification_config_user \
-      -d notification_config_dev \
+    docker compose exec -T "$DB_SERVICE" psql \
+      -U "$DB_USER" \
+      -d "$DB_NAME" \
       -v ON_ERROR_STOP=1 < "$migration_file"
   fi
 }

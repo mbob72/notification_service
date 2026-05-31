@@ -8,6 +8,21 @@ export type QuietHourRecord = {
   endMinute: number;
 };
 
+export type QuietHoursMutationResult = {
+  records: QuietHourRecord[];
+  operation: 'updated' | 'noop';
+  changed: boolean;
+};
+
+function normalizeWindows<T extends { startMinute: number; endMinute: number }>(windows: T[]): T[] {
+  return [...windows].sort((a, b) => {
+    if (a.startMinute !== b.startMinute) {
+      return a.startMinute - b.startMinute;
+    }
+    return a.endMinute - b.endMinute;
+  });
+}
+
 export class QuietHoursRepository {
   async findUserQuietHours(input: {
     userId: string;
@@ -102,8 +117,41 @@ export class QuietHoursRepository {
     notificationTypeId: string;
     channelId: number;
     windows: Array<{ startMinute: number; endMinute: number }>;
-  }): Promise<QuietHourRecord[]> {
+  }): Promise<QuietHoursMutationResult> {
     return db.transaction(async (tx) => {
+      const current = await tx
+        .select({
+          id: userQuietHours.id,
+          startMinute: userQuietHours.startMinute,
+          endMinute: userQuietHours.endMinute,
+        })
+        .from(userQuietHours)
+        .where(
+          and(
+            eq(userQuietHours.userId, input.userId),
+            eq(userQuietHours.notificationTypeId, input.notificationTypeId),
+            eq(userQuietHours.channelId, input.channelId),
+          ),
+        );
+
+      const normalizedCurrent = normalizeWindows(current);
+      const normalizedInput = normalizeWindows(input.windows);
+
+      if (
+        normalizedCurrent.length === normalizedInput.length &&
+        normalizedCurrent.every(
+          (window, index) =>
+            window.startMinute === normalizedInput[index]?.startMinute &&
+            window.endMinute === normalizedInput[index]?.endMinute,
+        )
+      ) {
+        return {
+          records: normalizedCurrent,
+          operation: 'noop',
+          changed: false,
+        };
+      }
+
       await tx
         .delete(userQuietHours)
         .where(
@@ -115,10 +163,10 @@ export class QuietHoursRepository {
         );
 
       if (input.windows.length === 0) {
-        return [];
+        return { records: [], operation: 'updated', changed: true };
       }
 
-      return tx
+      const records = await tx
         .insert(userQuietHours)
         .values(
           input.windows.map((window) => ({
@@ -131,9 +179,15 @@ export class QuietHoursRepository {
         )
         .returning({
           id: userQuietHours.id,
-          startMinute: userQuietHours.startMinute,
-          endMinute: userQuietHours.endMinute,
+            startMinute: userQuietHours.startMinute,
+            endMinute: userQuietHours.endMinute,
         });
+
+      return {
+        records: normalizeWindows(records),
+        operation: 'updated',
+        changed: true,
+      };
     });
   }
 }

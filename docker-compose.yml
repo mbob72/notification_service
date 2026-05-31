@@ -1,7 +1,7 @@
 services:
-  postgres:
+  postgres_dev:
     image: postgres:16-alpine
-    container_name: notification-config-postgres
+    container_name: notification-config-postgres-dev
     restart: unless-stopped
     environment:
       POSTGRES_DB: notification_config_dev
@@ -10,12 +10,31 @@ services:
     ports:
       - "55432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notification_config_user -d notification_config_dev"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: notification-config-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notification_config_test
+      POSTGRES_USER: notification_config_user
+      POSTGRES_PASSWORD: notification_config_password
+    ports:
+      - "55433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_config_user -d notification_config_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
-  postgres_data:
+  postgres_dev_data:
+  postgres_test_data:

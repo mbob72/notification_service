@@ -1,0 +1,10 @@
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "promoTypeCode": "promo_campaign",
+  "transactionalTypeCode": "payment_success",
+  "channelCodes": {
+    "email": "email",
+    "push": "push",
+    "sms": "sms"
+  }
+}

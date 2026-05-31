@@ -1,9 +1,32 @@
 import { ApiError } from '../api/errors';
 import type { ChannelCode, EffectivePreference } from '../domain/types';
+import { logger } from '../logger';
 import { NotificationMetadataRepository } from '../repositories/notification-metadata.repository';
 import { PreferencesRepository } from '../repositories/preferences.repository';
 import { QuietHoursRepository } from '../repositories/quiet-hours.repository';
 import { UsersRepository } from '../repositories/users.repository';
+
+type EnabledPartMeta = {
+  operation: 'created' | 'updated' | 'noop';
+  changed: boolean;
+};
+
+type QuietHoursPartMeta = {
+  operation: 'updated' | 'noop';
+  changed: boolean;
+};
+
+export type UpdatePreferenceResult = {
+  data: EffectivePreference;
+  meta: {
+    operation: 'created' | 'updated' | 'noop';
+    changed: boolean;
+    parts: {
+      enabled?: EnabledPartMeta;
+      quietHours?: QuietHoursPartMeta;
+    };
+  };
+};
 
 export class PreferencesService {
   constructor(
@@ -100,7 +123,7 @@ export class PreferencesService {
     channelCode: string;
     enabled?: boolean;
     quietHours?: Array<{ startMinute: number; endMinute: number }>;
-  }): Promise<EffectivePreference> {
+  }): Promise<UpdatePreferenceResult> {
     const user = await this.usersRepository.findById(input.userId);
     if (!user) {
       throw new ApiError(404, 'unknown_user', `Unknown user: ${input.userId}`);
@@ -116,28 +139,68 @@ export class PreferencesService {
       throw new ApiError(404, 'unknown_notification_type', `Unknown notification type: ${input.notificationTypeCode}`);
     }
 
+    let enabledMeta: EnabledPartMeta | undefined;
+    let quietHoursMeta: QuietHoursPartMeta | undefined;
+
     if (input.enabled !== undefined) {
-      await this.preferencesRepository.upsertUserPreference({
+      const result = await this.preferencesRepository.upsertUserPreference({
         userId: user.id,
         notificationTypeId: notificationType.id,
         channelId: channel.id,
         enabled: input.enabled,
       });
+      enabledMeta = { operation: result.operation, changed: result.changed };
     }
 
     if (input.quietHours !== undefined) {
-      await this.quietHoursRepository.replaceUserQuietHours({
+      const result = await this.quietHoursRepository.replaceUserQuietHours({
         userId: user.id,
         notificationTypeId: notificationType.id,
         channelId: channel.id,
         windows: input.quietHours,
       });
+      quietHoursMeta = { operation: result.operation, changed: result.changed };
     }
 
-    return this.getEffectivePreference({
+    const data = await this.getEffectivePreference({
       userId: user.id,
       notificationTypeCode: notificationType.code,
       channelCode: channel.code,
     });
+
+    const changed = Boolean(enabledMeta?.changed || quietHoursMeta?.changed);
+
+    let operation: 'created' | 'updated' | 'noop' = 'noop';
+    if (enabledMeta?.operation === 'updated' || quietHoursMeta?.operation === 'updated') {
+      operation = 'updated';
+    } else if (enabledMeta?.operation === 'created') {
+      operation = 'created';
+    }
+
+    const response: UpdatePreferenceResult = {
+      data,
+      meta: {
+        operation,
+        changed,
+        parts: {
+          ...(enabledMeta ? { enabled: enabledMeta } : {}),
+          ...(quietHoursMeta ? { quietHours: quietHoursMeta } : {}),
+        },
+      },
+    };
+
+    logger.info(
+      {
+        userId: user.id,
+        notificationTypeCode: notificationType.code,
+        channelCode: channel.code,
+        changed: response.meta.changed,
+        operation: response.meta.operation,
+        parts: response.meta.parts,
+      },
+      'Preference update processed',
+    );
+
+    return response;
   }
 }

@@ -1,6 +1,7 @@
 import { ApiError } from '../api/errors';
 import { isMinuteInsideQuietHours, toLocalMinuteOfDay } from '../domain/quiet-hours';
 import type { Decision, EvaluationReason } from '../domain/types';
+import { logger } from '../logger';
 import { GlobalPoliciesRepository } from '../repositories/global-policies.repository';
 import { NotificationMetadataRepository } from '../repositories/notification-metadata.repository';
 import { UsersRepository } from '../repositories/users.repository';
@@ -47,6 +48,21 @@ export class EvaluationService {
       throw new ApiError(404, 'unknown_notification_type', `Unknown notification type: ${input.notificationTypeCode}`);
     }
 
+    const logAndReturn = (decision: Decision, reason: EvaluationReason) => {
+      logger.info(
+        {
+          userId: user.id,
+          notificationTypeCode: notificationType.code,
+          channelCode: channel.code,
+          regionCode: user.regionCode,
+          decision,
+          reason,
+        },
+        'Notification delivery evaluated',
+      );
+      return { decision, reason };
+    };
+
     const policy = await this.globalPoliciesRepository.findMatchingActivePolicy({
       regionId: user.regionId,
       notificationTypeId: notificationType.id,
@@ -55,7 +71,7 @@ export class EvaluationService {
     });
 
     if (policy && policy.deliveryAllowed === false) {
-      return { decision: 'deny', reason: 'blocked_by_global_policy' };
+      return logAndReturn('deny', 'blocked_by_global_policy');
     }
 
     const effective = await this.preferencesService.getEffectivePreference({
@@ -65,19 +81,16 @@ export class EvaluationService {
     });
 
     if (!effective.enabled) {
-      return {
-        decision: 'deny',
-        reason: effective.source.enabled === 'user' ? 'disabled_by_user' : 'disabled_by_default',
-      };
+      return logAndReturn('deny', effective.source.enabled === 'user' ? 'disabled_by_user' : 'disabled_by_default');
     }
 
     const minute = toLocalMinuteOfDay(input.datetime, user.timezone);
     const insideQuietHours = effective.quietHours.some((window) => isMinuteInsideQuietHours(minute, window));
 
     if (insideQuietHours && effective.notificationCategoryCode !== 'transactional') {
-      return { decision: 'deny', reason: 'blocked_by_quiet_hours' };
+      return logAndReturn('deny', 'blocked_by_quiet_hours');
     }
 
-    return { decision: 'allow', reason: 'allowed' };
+    return logAndReturn('allow', 'allowed');
   }
 }

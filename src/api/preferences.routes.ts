@@ -29,7 +29,7 @@ preferencesRouter.post(
     const { userId } = userIdParamSchema.parse(req.params);
     const body = updatePreferenceBodySchema.parse(req.body);
 
-    const data = await preferencesService.updateUserPreference({
+    const result = await preferencesService.updateUserPreference({
       userId,
       notificationTypeCode: body.notificationTypeCode,
       channelCode: body.channelCode,
@@ -37,6 +37,6 @@ preferencesRouter.post(
       ...(body.quietHours !== undefined ? { quietHours: body.quietHours } : {}),
     });
 
-    res.json({ data });
+    res.status(200).json(result);
   }),
 );

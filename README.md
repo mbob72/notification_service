@@ -1,54 +1,94 @@
-# Notification Service Local Development
+# Notification Preferences Service
+
+A small Node.js + TypeScript service that resolves and updates notification preferences with regional defaults, user overrides, quiet hours, and global delivery policies.
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Node.js + pnpm
+- Docker + Docker Compose
+- Node.js 22+
+- pnpm 10+
 
-Optional:
-
-- PostgreSQL client tools (`psql`) in `PATH` (if missing, migration script falls back to `docker compose exec`)
-
-## Setup
+## Run Locally (PostgreSQL)
 
 ```bash
 cp .env.example .env
 pnpm install
-pnpm db:up
-pnpm db:migrate
-pnpm db:seed
+pnpm db:prepare
 pnpm dev
 ```
 
-## One-command local start
+One-command local startup:
 
 ```bash
 pnpm dev:local
 ```
 
-This command will:
-
-1. Start PostgreSQL in Docker Compose
-2. Wait until PostgreSQL is ready
-3. Apply SQL migrations
-4. Apply development seed data
-5. Start the app in development mode (`pnpm dev`)
-
-## Development commands
-
-- `pnpm dev`: runs `tsx watch src/server.ts`
-- `pnpm test`: runs unit tests via Vitest
-- `pnpm typecheck`: runs strict TypeScript checks (`tsc --noEmit`)
-
-## API curl examples
+Useful DB commands:
 
 ```bash
-curl http://localhost:3000/health
+pnpm db:prepare
+pnpm db:reset
+pnpm db:migrate:test
+pnpm db:prepare:test
+pnpm db:reset:test
+pnpm db:logs
+pnpm db:down
 ```
 
-```bash
-curl "http://localhost:3000/users/00000000-0000-0000-0000-000000000001/preferences?notificationTypeCode=promo_campaign&channelCode=email"
-```
+Database containers are isolated by purpose:
+
+- `postgres_dev` on `localhost:55432` for local development.
+- `postgres_test` on `localhost:55433` for integration tests.
+
+## Architecture
+
+- Express handles HTTP transport and routing.
+- Zod validates request payloads and query params.
+- Services orchestrate business rules (`PreferencesService`, `EvaluationService`).
+- Repositories isolate DB access concerns.
+- Drizzle is the typed SQL query layer.
+- SQL migrations remain the source of truth for DDL.
+- PostgreSQL stores users, metadata, defaults, user overrides, quiet hours, and global policies.
+
+## Domain Model
+
+Core entities:
+
+- `users`, `regions`
+- `notification_categories`, `notification_types`, `notification_channels`
+- default versions and rows for preference + quiet hours
+- `user_notification_preferences`, `user_quiet_hours`
+- global policy versions and policy rows
+
+Preference resolution combines user-level overrides with active regional defaults.
+
+## Business Rules
+
+Evaluation priority:
+
+1. Global policies
+2. User/default enabled preference
+3. Quiet hours
+4. Allow
+
+Additional rules in this MVP:
+
+- User overrides take precedence over defaults.
+- Active regional default versions are resolved at read time.
+- Marketing notifications respect quiet hours.
+- Transactional notifications are not blocked by quiet hours.
+- Update operations are strictly idempotent and return mutation metadata (`created` / `updated` / `noop`).
+
+## API
+
+Routes:
+
+- `GET /health`
+- `GET /users/:userId/preferences`
+- `POST /users/:userId/preferences`
+- `POST /evaluate`
+
+Example: set preference state
 
 ```bash
 curl -X POST http://localhost:3000/users/00000000-0000-0000-0000-000000000001/preferences \
@@ -56,55 +96,84 @@ curl -X POST http://localhost:3000/users/00000000-0000-0000-0000-000000000001/pr
   -d '{
     "notificationTypeCode": "promo_campaign",
     "channelCode": "email",
-    "enabled": false
+    "enabled": true
   }'
 ```
 
-```bash
-curl -X POST http://localhost:3000/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "00000000-0000-0000-0000-000000000001",
-    "notificationTypeCode": "promo_campaign",
-    "channelCode": "sms",
-    "regionCode": "EU",
-    "datetime": "2026-05-21T21:30:00Z"
-  }'
-```
-
-Expected response for the last request:
+Response includes effective state plus idempotency metadata:
 
 ```json
 {
   "data": {
-    "decision": "deny",
-    "reason": "blocked_by_global_policy"
+    "userId": "00000000-0000-0000-0000-000000000001",
+    "notificationTypeCode": "promo_campaign",
+    "channelCode": "email",
+    "enabled": true
+  },
+  "meta": {
+    "operation": "updated",
+    "changed": true,
+    "parts": {
+      "enabled": {
+        "operation": "updated",
+        "changed": true
+      }
+    }
   }
 }
 ```
 
-## Reset local database
+## Testing
+
+Fast tests:
 
 ```bash
-docker compose down -v
-pnpm db:up
-pnpm db:migrate
-pnpm db:seed
+pnpm test
 ```
 
-## Useful database commands
+Service integration tests (uses PostgreSQL + seed data):
 
 ```bash
-pnpm db:logs
-pnpm db:down
+pnpm test:integration
 ```
 
-## Notes
+`test:integration` prepares and uses the dedicated test database container (`postgres_test`), so it does not reset or reuse the dev database.
+It uses `seeds/test.sql` plus `fixtures/test-fixtures.json` as the explicit fixture contract for integration scenarios.
 
-- Migrations are explicit commands and are not run automatically inside app runtime code.
-- The notification schema migration is idempotent, so re-running `pnpm db:migrate` is safe.
-- Seed script is idempotent, so re-running `pnpm db:seed` is safe.
-- The SQL migration is the source of truth for DDL.
-- Drizzle schema mirrors the existing database schema and is used as a typed query layer.
-- Current MVP resolves active regional default versions at read time.
-- In production, we could pin default version IDs on user creation if historical stability of defaults is required.
+Type checks:
+
+```bash
+pnpm typecheck
+```
+
+## Observability
+
+Structured logging via `pino`:
+
+- preference update events (`operation`, `changed`, and mutation parts);
+- evaluation decisions (`decision`, `reason`, user/type/channel/region context).
+
+Production metrics to add next:
+
+- counters by `decision`/`reason`/`channel`/`notificationType`;
+- latency histograms for preference and evaluation endpoints.
+
+## Trade-offs
+
+- This MVP favors readability and deterministic behavior over aggressive query-level optimization.
+- Default version resolution happens at read time, which is flexible but can change behavior as defaults evolve.
+- Integration tests rely on a prepared local PostgreSQL instance for realistic coverage.
+
+## Production Improvements
+
+- Authentication and authorization.
+- Immutable audit log for preference changes.
+- Outbox/event publishing on preference mutations.
+- Stronger idempotency keys for externally-issued commands.
+- OpenAPI spec and generated client.
+- Metrics endpoint and dashboarding.
+- Distributed tracing.
+- Rate limiting and abuse protection.
+- Transaction-safe migration rollout strategy.
+- Option to pin default version IDs at user creation for historical stability.
+- Admin API/UI for global policies and defaults.

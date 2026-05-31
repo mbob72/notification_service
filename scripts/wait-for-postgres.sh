@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -f ".env" ]; then
+if [ -z "${DATABASE_URL:-}" ] && [ -f ".env" ]; then
   set -a
   source ".env"
   set +a
@@ -12,6 +12,9 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+DB_SERVICE="${DB_SERVICE:-postgres_dev}"
+DB_USER="${DB_USER:-notification_config_user}"
+DB_NAME="${DB_NAME:-notification_config_dev}"
 MAX_RETRIES="${DB_WAIT_MAX_RETRIES:-30}"
 SLEEP_SECONDS="${DB_WAIT_SLEEP_SECONDS:-2}"
 
@@ -20,10 +23,10 @@ check_with_local_pg_isready() {
 }
 
 check_with_docker_pg_isready() {
-  docker compose exec -T postgres pg_isready -U notification_config_user -d notification_config_dev >/dev/null 2>&1
+  docker compose exec -T "$DB_SERVICE" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1
 }
 
-echo "Waiting for PostgreSQL..."
+echo "Waiting for PostgreSQL ($DB_SERVICE)..."
 
 for ((i=1; i<=MAX_RETRIES; i++)); do
   if command -v pg_isready >/dev/null 2>&1; then
