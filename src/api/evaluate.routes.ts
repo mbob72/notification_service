@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from './errors';
+import { asyncHandler } from '../errors';
 import { evaluateBodySchema } from './validation';
 import { EvaluationService } from '../services/evaluation.service';
 

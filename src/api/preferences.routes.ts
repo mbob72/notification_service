@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from './errors';
+import { asyncHandler } from '../errors';
 import { getPreferenceQuerySchema, updatePreferenceBodySchema, userIdParamSchema } from './validation';
 import { PreferencesService } from '../services/preferences.service';
 

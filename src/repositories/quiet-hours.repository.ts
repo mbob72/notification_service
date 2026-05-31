@@ -179,8 +179,8 @@ export class QuietHoursRepository {
         )
         .returning({
           id: userQuietHours.id,
-            startMinute: userQuietHours.startMinute,
-            endMinute: userQuietHours.endMinute,
+          startMinute: userQuietHours.startMinute,
+          endMinute: userQuietHours.endMinute,
         });
 
       return {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { errorHandler } from './api/errors';
+import { errorHandler } from './errors';
 import { createEvaluateRouter, type EvaluateRouterDeps } from './api/evaluate.routes';
 import { createPreferencesRouter, type PreferencesRouterDeps } from './api/preferences.routes';
 

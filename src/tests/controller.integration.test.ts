@@ -88,6 +88,22 @@ describe('controller integration', () => {
       expect(response.status).toBe(404);
       expect(response.body.error.code).toBe('unknown_notification_type');
     });
+
+    it('returns unknown_user for preferences list mode', async () => {
+      const response = await request(app).get('/users/00000000-0000-0000-0000-000000000099/preferences');
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('unknown_user');
+    });
+
+    it('returns unknown_user for preferences point mode', async () => {
+      const response = await request(app)
+        .get('/users/00000000-0000-0000-0000-000000000099/preferences')
+        .query({ notificationTypeCode: NOTIFICATION_TYPE_CODE, channelCode: EMAIL_CHANNEL_CODE });
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe('unknown_user');
+    });
   });
 
   describe('preferences endpoints', () => {

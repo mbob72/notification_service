@@ -1,4 +1,4 @@
-import { ApiError } from '../api/errors';
+import { ApiError } from '../errors';
 import type { ChannelCode, EffectivePreference } from '../domain/types';
 import { logger } from '../logger';
 import { NotificationMetadataRepository } from '../repositories/notification-metadata.repository';
@@ -142,12 +142,17 @@ export class PreferencesService {
   }
 
   async listEffectivePreferences(input: { userId: string }): Promise<EffectivePreference[]> {
+    const user = await this.usersRepository.findById(input.userId);
+    if (!user) {
+      throw new ApiError(404, 'unknown_user', `Unknown user: ${input.userId}`);
+    }
+
     const pairs = await this.metadataRepository.listNotificationTypeChannels();
 
     const preferences = await Promise.all(
       pairs.map((pair) =>
         this.getEffectivePreference({
-          userId: input.userId,
+          userId: user.id,
           notificationTypeCode: pair.notificationTypeCode,
           channelCode: pair.channelCode,
         }),

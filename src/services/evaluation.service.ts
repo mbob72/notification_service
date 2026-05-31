@@ -1,4 +1,4 @@
-import { ApiError } from '../api/errors';
+import { ApiError } from '../errors';
 import { isMinuteInsideQuietHours, toLocalMinuteOfDay } from '../domain/quiet-hours';
 import type { Decision, EvaluationReason } from '../domain/types';
 import { logger } from '../logger';
