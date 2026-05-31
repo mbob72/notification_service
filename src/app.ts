@@ -1,9 +1,11 @@
 import express from 'express';
 import { errorHandler } from './api/errors';
-import { evaluateRouter } from './api/evaluate.routes';
-import { preferencesRouter } from './api/preferences.routes';
+import { createEvaluateRouter, type EvaluateRouterDeps } from './api/evaluate.routes';
+import { createPreferencesRouter, type PreferencesRouterDeps } from './api/preferences.routes';
 
-export function createApp() {
+export type AppDeps = EvaluateRouterDeps & PreferencesRouterDeps;
+
+export function createApp(deps: AppDeps = {}) {
   const app = express();
 
   app.use(express.json());
@@ -12,8 +14,11 @@ export function createApp() {
     res.json({ status: 'ok' });
   });
 
-  app.use('/users/:userId/preferences', preferencesRouter);
-  app.use('/evaluate', evaluateRouter);
+  const preferencesRouterDeps = deps.preferencesService ? { preferencesService: deps.preferencesService } : {};
+  const evaluateRouterDeps = deps.evaluationService ? { evaluationService: deps.evaluationService } : {};
+
+  app.use('/users/:userId/preferences', createPreferencesRouter(preferencesRouterDeps));
+  app.use('/evaluate', createEvaluateRouter(evaluateRouterDeps));
 
   app.use(errorHandler);
 

@@ -5,15 +5,28 @@ import { logger } from '../logger';
 import { GlobalPoliciesRepository } from '../repositories/global-policies.repository';
 import { NotificationMetadataRepository } from '../repositories/notification-metadata.repository';
 import { UsersRepository } from '../repositories/users.repository';
-import { PreferencesService } from './preferences.service';
+import { PreferencesService, type PreferencesServiceDeps } from './preferences.service';
+
+export type EvaluationServiceDeps = {
+  usersRepository?: Pick<UsersRepository, 'findById'>;
+  metadataRepository?: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  globalPoliciesRepository?: Pick<GlobalPoliciesRepository, 'findMatchingActivePolicy'>;
+  preferencesService?: Pick<PreferencesService, 'getEffectivePreference'>;
+  preferencesServiceDeps?: PreferencesServiceDeps;
+};
 
 export class EvaluationService {
-  constructor(
-    private readonly usersRepository = new UsersRepository(),
-    private readonly metadataRepository = new NotificationMetadataRepository(),
-    private readonly globalPoliciesRepository = new GlobalPoliciesRepository(),
-    private readonly preferencesService = new PreferencesService(),
-  ) {}
+  private readonly usersRepository: Pick<UsersRepository, 'findById'>;
+  private readonly metadataRepository: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  private readonly globalPoliciesRepository: Pick<GlobalPoliciesRepository, 'findMatchingActivePolicy'>;
+  private readonly preferencesService: Pick<PreferencesService, 'getEffectivePreference'>;
+
+  constructor(deps: EvaluationServiceDeps = {}) {
+    this.usersRepository = deps.usersRepository ?? new UsersRepository();
+    this.metadataRepository = deps.metadataRepository ?? new NotificationMetadataRepository();
+    this.globalPoliciesRepository = deps.globalPoliciesRepository ?? new GlobalPoliciesRepository();
+    this.preferencesService = deps.preferencesService ?? new PreferencesService(deps.preferencesServiceDeps);
+  }
 
   async evaluate(input: {
     userId: string;

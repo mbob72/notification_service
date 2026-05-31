@@ -17,7 +17,7 @@
     "db:reset:test": "DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test DB_VOLUME_RESET=1 pnpm db:down && pnpm db:prepare:test",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run src/tests/quiet-hours.test.ts src/tests/api-validation.test.ts",
-    "test:integration": "pnpm db:prepare:test && DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test vitest run src/tests/service.integration.test.ts",
+    "test:integration": "pnpm db:prepare:test && DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test vitest run src/tests/controller.integration.test.ts",
     "typecheck": "tsc --noEmit",
     "dev:local": "pnpm db:prepare && pnpm dev"
   },
@@ -35,6 +35,8 @@
     "@types/luxon": "^3.7.1",
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

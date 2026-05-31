@@ -28,13 +28,31 @@ export type UpdatePreferenceResult = {
   };
 };
 
+export type PreferencesServiceDeps = {
+  usersRepository?: Pick<UsersRepository, 'findById'>;
+  metadataRepository?: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  preferencesRepository?: Pick<PreferencesRepository, 'findUserPreference' | 'findActiveDefaultPreference' | 'upsertUserPreference'>;
+  quietHoursRepository?: Pick<QuietHoursRepository, 'findUserQuietHours' | 'findActiveDefaultQuietHours' | 'replaceUserQuietHours'>;
+};
+
 export class PreferencesService {
-  constructor(
-    private readonly usersRepository = new UsersRepository(),
-    private readonly metadataRepository = new NotificationMetadataRepository(),
-    private readonly preferencesRepository = new PreferencesRepository(),
-    private readonly quietHoursRepository = new QuietHoursRepository(),
-  ) {}
+  private readonly usersRepository: Pick<UsersRepository, 'findById'>;
+  private readonly metadataRepository: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  private readonly preferencesRepository: Pick<
+    PreferencesRepository,
+    'findUserPreference' | 'findActiveDefaultPreference' | 'upsertUserPreference'
+  >;
+  private readonly quietHoursRepository: Pick<
+    QuietHoursRepository,
+    'findUserQuietHours' | 'findActiveDefaultQuietHours' | 'replaceUserQuietHours'
+  >;
+
+  constructor(deps: PreferencesServiceDeps = {}) {
+    this.usersRepository = deps.usersRepository ?? new UsersRepository();
+    this.metadataRepository = deps.metadataRepository ?? new NotificationMetadataRepository();
+    this.preferencesRepository = deps.preferencesRepository ?? new PreferencesRepository();
+    this.quietHoursRepository = deps.quietHoursRepository ?? new QuietHoursRepository();
+  }
 
   async getEffectivePreference(input: {
     userId: string;
