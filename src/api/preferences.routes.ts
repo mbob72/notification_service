@@ -4,7 +4,7 @@ import { getPreferenceQuerySchema, updatePreferenceBodySchema, userIdParamSchema
 import { PreferencesService } from '../services/preferences.service';
 
 export type PreferencesRouterDeps = {
-  preferencesService?: Pick<PreferencesService, 'getEffectivePreference' | 'updateUserPreference'>;
+  preferencesService?: Pick<PreferencesService, 'getEffectivePreference' | 'listEffectivePreferences' | 'updateUserPreference'>;
 };
 
 export function createPreferencesRouter(deps: PreferencesRouterDeps = {}) {
@@ -17,11 +17,14 @@ export function createPreferencesRouter(deps: PreferencesRouterDeps = {}) {
       const { userId } = userIdParamSchema.parse(req.params);
       const query = getPreferenceQuerySchema.parse(req.query);
 
-      const data = await preferencesService.getEffectivePreference({
-        userId,
-        notificationTypeCode: query.notificationTypeCode,
-        channelCode: query.channelCode,
-      });
+      const data =
+        query.notificationTypeCode && query.channelCode
+          ? await preferencesService.getEffectivePreference({
+              userId,
+              notificationTypeCode: query.notificationTypeCode,
+              channelCode: query.channelCode,
+            })
+          : await preferencesService.listEffectivePreferences({ userId });
 
       res.json({ data });
     }),

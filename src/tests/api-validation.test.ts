@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { updatePreferenceBodySchema } from '../api/validation';
+import { getPreferenceQuerySchema, updatePreferenceBodySchema } from '../api/validation';
 
 describe('updatePreferenceBodySchema', () => {
   it('requires at least one of enabled or quietHours', () => {
@@ -29,5 +29,17 @@ describe('updatePreferenceBodySchema', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe('getPreferenceQuerySchema', () => {
+  it('accepts empty query for list mode', () => {
+    const result = getPreferenceQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects partially provided query params', () => {
+    const result = getPreferenceQuerySchema.safeParse({ notificationTypeCode: 'promo_campaign' });
+    expect(result.success).toBe(false);
   });
 });

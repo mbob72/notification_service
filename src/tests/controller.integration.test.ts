@@ -91,6 +91,14 @@ describe('controller integration', () => {
   });
 
   describe('preferences endpoints', () => {
+    it('returns preference list when query params are omitted', async () => {
+      const response = await request(app).get(`/users/${USER_ID}/preferences`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
+    });
+
     it('returns default preference for new user', async () => {
       const response = await request(app)
         .get(`/users/${USER_ID}/preferences`)

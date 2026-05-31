@@ -30,14 +30,20 @@ export type UpdatePreferenceResult = {
 
 export type PreferencesServiceDeps = {
   usersRepository?: Pick<UsersRepository, 'findById'>;
-  metadataRepository?: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  metadataRepository?: Pick<
+    NotificationMetadataRepository,
+    'findChannelByCode' | 'findNotificationTypeByCode' | 'listNotificationTypeChannels'
+  >;
   preferencesRepository?: Pick<PreferencesRepository, 'findUserPreference' | 'findActiveDefaultPreference' | 'upsertUserPreference'>;
   quietHoursRepository?: Pick<QuietHoursRepository, 'findUserQuietHours' | 'findActiveDefaultQuietHours' | 'replaceUserQuietHours'>;
 };
 
 export class PreferencesService {
   private readonly usersRepository: Pick<UsersRepository, 'findById'>;
-  private readonly metadataRepository: Pick<NotificationMetadataRepository, 'findChannelByCode' | 'findNotificationTypeByCode'>;
+  private readonly metadataRepository: Pick<
+    NotificationMetadataRepository,
+    'findChannelByCode' | 'findNotificationTypeByCode' | 'listNotificationTypeChannels'
+  >;
   private readonly preferencesRepository: Pick<
     PreferencesRepository,
     'findUserPreference' | 'findActiveDefaultPreference' | 'upsertUserPreference'
@@ -133,6 +139,22 @@ export class PreferencesService {
         quietHours: quietHoursSource,
       },
     };
+  }
+
+  async listEffectivePreferences(input: { userId: string }): Promise<EffectivePreference[]> {
+    const pairs = await this.metadataRepository.listNotificationTypeChannels();
+
+    const preferences = await Promise.all(
+      pairs.map((pair) =>
+        this.getEffectivePreference({
+          userId: input.userId,
+          notificationTypeCode: pair.notificationTypeCode,
+          channelCode: pair.channelCode,
+        }),
+      ),
+    );
+
+    return preferences;
   }
 
   async updateUserPreference(input: {

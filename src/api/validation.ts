@@ -18,10 +18,19 @@ export const quietHoursWindowSchema = z
     message: 'startMinute and endMinute must be different',
   });
 
-export const getPreferenceQuerySchema = z.object({
-  notificationTypeCode: notificationTypeCodeSchema,
-  channelCode: channelCodeSchema,
-});
+export const getPreferenceQuerySchema = z
+  .object({
+    notificationTypeCode: notificationTypeCodeSchema.optional(),
+    channelCode: channelCodeSchema.optional(),
+  })
+  .refine(
+    (value) =>
+      (value.notificationTypeCode !== undefined && value.channelCode !== undefined) ||
+      (value.notificationTypeCode === undefined && value.channelCode === undefined),
+    {
+      message: 'notificationTypeCode and channelCode must be provided together',
+    },
+  );
 
 export const updatePreferenceBodySchema = z
   .object({

@@ -85,8 +85,14 @@ Routes:
 
 - `GET /health`
 - `GET /users/:userId/preferences`
+- `GET /users/:userId/preferences?notificationTypeCode=...&channelCode=...`
 - `POST /users/:userId/preferences`
 - `POST /evaluate`
+
+`GET /users/:userId/preferences` supports two modes:
+
+- without query params: returns effective preferences for all known notification type/channel pairs;
+- with `notificationTypeCode` + `channelCode`: returns one effective preference.
 
 Example: set preference state
 

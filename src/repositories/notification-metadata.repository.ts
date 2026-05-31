@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { notificationCategories, notificationChannels, notificationTypes } from '../db/schema';
+import { notificationCategories, notificationChannels, notificationTypeChannels, notificationTypes } from '../db/schema';
 import type { NotificationCategoryCode } from '../domain/types';
 
 export type ChannelRecord = {
@@ -18,6 +18,11 @@ export type NotificationTypeRecord = {
   code: string;
   categoryId: number;
   categoryCode: NotificationCategoryCode;
+};
+
+export type NotificationTypeChannelRecord = {
+  notificationTypeCode: string;
+  channelCode: string;
 };
 
 export class NotificationMetadataRepository {
@@ -55,5 +60,17 @@ export class NotificationMetadataRepository {
       .limit(1);
 
     return (row as NotificationTypeRecord | undefined) ?? null;
+  }
+
+  async listNotificationTypeChannels(): Promise<NotificationTypeChannelRecord[]> {
+    return db
+      .select({
+        notificationTypeCode: notificationTypes.code,
+        channelCode: notificationChannels.code,
+      })
+      .from(notificationTypeChannels)
+      .innerJoin(notificationTypes, eq(notificationTypeChannels.notificationTypeId, notificationTypes.id))
+      .innerJoin(notificationChannels, eq(notificationTypeChannels.channelId, notificationChannels.id))
+      .where(eq(notificationTypes.isActive, true));
   }
 }

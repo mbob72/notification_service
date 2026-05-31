@@ -12,7 +12,7 @@
     "db:migrate:test": "DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test pnpm db:migrate && DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test SEED_FILE=seeds/test.sql FIXTURES_FILE=fixtures/test-fixtures.json pnpm db:seed",
     "db:seed": "bash scripts/db-seed.sh",
     "db:prepare": "pnpm db:up && pnpm db:wait && pnpm db:migrate && pnpm db:seed",
-    "db:reset": "DB_VOLUME_RESET=1 pnpm db:down && pnpm db:prepare",
+    "db:reset": "docker compose down -v && pnpm db:prepare",
     "db:prepare:test": "DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test pnpm db:up && DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test pnpm db:wait && pnpm db:migrate:test",
     "db:reset:test": "DB_SERVICE=postgres_test DB_NAME=notification_config_test DATABASE_URL=postgresql://notification_config_user:notification_config_password@localhost:55433/notification_config_test DB_VOLUME_RESET=1 pnpm db:down && pnpm db:prepare:test",
     "dev": "tsx watch src/server.ts",
